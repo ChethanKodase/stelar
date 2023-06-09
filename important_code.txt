@@ -1,0 +1,37 @@
+Important codes:
+
+sudo /root/scripts/ro_mounter rw
+
+sudo chown -R luser:luser view_check/
+
+sudo bitfusion run -n 4 /home/luser/anaconda3/envs/stelar/bin/python main.py
+
+
+
+// to view the running job
+sudo tail -f nohup.out
+
+// To view all the running jobs
+ps aux | grep python
+
+
+// to run the job in background
+sudo bitfusion run -n 1 nohup /home/luser/anaconda3/envs/stelar/bin/python main.py &
+
+// To stop a program
+sudo kill 1780450
+
+
+
+// To submit multiple jobs
+
+nohup python job1.py > job1.out &
+nohup python job2.py > job2.out &
+
+
+Important Youtube tutorials:
+https://www.youtube.com/watch?v=3Xn21RT-y7Y&list=PLINDPtcaHmLZqBB2PwHPiqtRnpT-iL6Pm&index=31
+
+
+
+27 mins
