@@ -5,11 +5,11 @@ Geospatial crop image data analysis
 
 Example: 
 
-Full Image: 
+Full Image: 10980 x 10980
 
 ![Image 1](./showcase_images/splitting/test1.png)
 
-
+Split images : 180 x 180
 
 | ![Image 1](./showcase_images/splitting/img0_0tt.png) | ![Image 2](./showcase_images/splitting/img0_1tt.png) | ![Image 3](./showcase_images/splitting/img0_2tt.png) | ![Image 2](./showcase_images/splitting/img0_3tt.png) |
 |---|---|--|--|
