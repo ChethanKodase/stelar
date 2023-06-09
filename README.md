@@ -17,7 +17,8 @@ Split images : 180 x 180
 
 Example of a different dataset: 
 
-Dubai dataset with mask
+Dubai dataset image example with mask
 
 ![Image 1](./showcase_images/dubai_data_example/ImageAndMask.png)
 
+Thisis the kind of mask we need in Stelar dataset
