@@ -19,3 +19,6 @@ Splits of size 180 x 180
 
 ![plot](./showcase_images/splitting/img0_1tt.png)
 
+
+| ![Image 1](./showcase_images/splitting/img0_0tt.png) | ![Image 2](./showcase_images/splitting/img0_1tt.png) |
+|---|---|
