@@ -142,6 +142,14 @@ def num_to_rgb(val, max_val=18):
     b = round(math.sin(0.024 * i + 4) * 127 + 128);
     return [r,g,b]
 
+def num_to_rgb_all(val, max_val=18):
+    i = (val * 255 / max_val);
+    r = np.round(np.sin(0.024 * i + 0) * 127 + 128);
+    g = np.round(np.sin(0.024 * i + 2) * 127 + 128);
+    b = np.round(np.sin(0.024 * i + 4) * 127 + 128);
+    rgbs = np.dstack((r,g,b)).reshape(-1,3)
+    return rgbs
+
 
 def extract_image_from_RAS_file(datapath, filename, image_length, image_width, select_image):
     file = open(datapath + filename, "r")
@@ -168,6 +176,12 @@ def extract_image_from_RAS_file(datapath, filename, image_length, image_width, s
         elif pixel == -930:
             image[count_line, count_column] = [235, 246, 247]
         else:
+            print("float(str(pixel)[:-2])/40.0", float(str(pixel)[:-2])/40.0)
+            print("float(str(pixel)[:-2])",float(str(pixel)[:-2]))
+            print("str(pixel)[:-2]", str(pixel)[:-2])
+            print(" str(pixel)", str(pixel))
+            print("pixel", pixel)
+            print("pixel//100", (pixel//100)*1.0)
             image[count_line, count_column] = num_to_rgb(float(str(pixel)[:-2])/40.0)
         count_column += 1
         if count_column == image_length:
@@ -178,6 +192,104 @@ def extract_image_from_RAS_file(datapath, filename, image_length, image_width, s
 
     img = toimage(image)
     return img
+
+def extract_image_from_RAS_file_cupd_all(datapath, filename, image_length, image_width):
+    file = open(datapath + filename, "r")
+    a_all = np.fromfile(file, dtype=np.int16)
+    cluster_len = a_all.shape[0] // (image_width * image_width)
+    all_image_array = []
+    all_imgs = []
+    for select_image in range(cluster_len):
+        
+        image = np.zeros((image_length, image_width, 3), dtype=np.int16)
+        a = a_all[select_image*(image_length*image_width):(select_image+1)*(image_length*image_width)].reshape(image_length, image_width)
+
+        image[np.where(a == -999)[0], np.where(a == -999)[1]] == [255, 0, 0]
+        image[np.where(a == -911)[0], np.where(a == -911)[1]] == [100, 100, 100]
+        image[np.where(a == -920)[0], np.where(a == -920)[1]] == [100, 100, 100]
+        image[np.where(a == -910)[0], np.where(a == -910)[1]] == [0, 0, 0]
+        image[np.where(a == -961)[0], np.where(a == -961)[1]] == [48, 138, 78]
+        image[np.where(a == -950)[0], np.where(a == -950)[1]] == [143, 72, 56]
+        image[np.where(a == -940)[0], np.where(a == -940)[1]] == [70, 190, 199]
+        image[np.where(a == -930)[0], np.where(a == -930)[1]] == [235, 246, 247]
+        image[np.where(a >= 0)[0], np.where(a >= 0)[1]] = num_to_rgb_all((a[np.where(a >= 0)]//100)/40.0)
+        
+        img = toimage(image)
+        all_imgs.append(img)
+
+        all_image_array.append(image)
+
+    return all_imgs, all_image_array
+
+
+def extract_image_from_RAS_file_cupd(datapath, filename, image_length, image_width, select_image):
+    file = open(datapath + filename, "r")
+    a = np.fromfile(file, dtype=np.int16)
+    
+    image = np.zeros((image_length, image_width, 3), dtype=np.int16)
+
+    a = a[select_image*(image_length*image_width):(select_image+1)*(image_length*image_width)].reshape(image_length, image_width)
+
+    image[np.where(a == -999)[0], np.where(a == -999)[1]] == [255, 0, 0]
+    image[np.where(a == -911)[0], np.where(a == -911)[1]] == [100, 100, 100]
+    image[np.where(a == -920)[0], np.where(a == -920)[1]] == [100, 100, 100]
+    image[np.where(a == -910)[0], np.where(a == -910)[1]] == [0, 0, 0]
+    image[np.where(a == -961)[0], np.where(a == -961)[1]] == [48, 138, 78]
+    image[np.where(a == -950)[0], np.where(a == -950)[1]] == [143, 72, 56]
+    image[np.where(a == -940)[0], np.where(a == -940)[1]] == [70, 190, 199]
+    image[np.where(a == -930)[0], np.where(a == -930)[1]] == [235, 246, 247]
+    image[np.where(a >= 0)[0], np.where(a >= 0)[1]] = num_to_rgb_all((a[np.where(a >= 0)]//100)/40.0)
+    
+    img = toimage(image)
+
+    return img, image
+
+def extract_image_from_RAS_file_new(datapath, filename, image_length, image_width, select_image):
+    file = open(datapath + filename, "r")
+    a = np.fromfile(file, dtype=np.int16)
+    img_raw = a[select_image*(image_length*image_width):(select_image+1)*(image_length*image_width)].reshape(image_length,image_width)
+    """
+    -999 = missing value (blackfill) -> should be interpolated!
+	-961 = forest
+	-950 = urban areas
+	-940 = water
+	-930 = snow
+    -920 = cloud shadow -> should be interpolated!
+    -911 = cirrus clouds -> should be interpolated!
+    -910 = clouds -> should be interpolated!
+    """
+    ind_misvalue = (img_raw == -999)
+    ind_forest  = (img_raw == -961)
+    ind_urban = (img_raw == -950)
+    ind_water = (img_raw == -940)
+    ind_snow = (img_raw == -930)
+    ind_cloudshadow  = (img_raw == -920)
+    ind_cirrusclouds  = (img_raw == -911)
+    ind_clouds = (img_raw == -910) 
+    ind_invalid= (img_raw < 0) & np.logical_not(ind_misvalue |ind_forest|ind_urban|ind_water|ind_snow|ind_cloudshadow|ind_cirrusclouds|ind_clouds)
+    ind_small = (img_raw // 100) > 3
+    ind_lai = (img_raw // 100) >=3
+    img_np = np.zeros((image_length, image_width, 3), dtype=np.int16)
+    img_np[(ind_misvalue |ind_invalid)] = [255,0,0] 
+    img_np[(ind_cirrusclouds | ind_cloudshadow | ind_small)] = [100, 100, 100]
+    img_np[ind_clouds] = [0, 0, 0]
+    img_np[ind_forest] = [48, 138, 78]
+    img_np[ind_urban] = [143, 72, 56]
+    img_np[ind_water] = [70, 190, 199]
+    img_np[ind_snow] = [235, 246, 247]
+
+    max_val = 18
+    ir= (img_raw[ind_lai] //100)/40.
+    i = (ir * 255 / max_val)
+    r = np.around(np.sin(0.024 * i + 0) *127 + 128)
+    g = np.around(np.sin(0.024 * i + 2) *127 + 128)
+    b = np.around(np.sin(0.024 * i + 4) *127 + 128)
+
+    img_np[ind_lai] = np.stack((r,g,b),axis=-1)
+
+    img = toimage(img_np)
+    return img
+
 
 
 def extract_all_images_frmo_RAS_folder(folder, image_length, image_width):
@@ -402,7 +514,8 @@ def extract_all_LAI_from_RAS_file(datapath_filename, image_length, image_width):
         img[mask] = 1
         
         # Get first 3 digits
-        img = img * 10**(4 - np.log10(img).astype(int)) // 100
+        #img = img * 10**(4 - np.log10(img).astype(int)) // 100
+        img = img // 100
 
         lai = img / 40
         

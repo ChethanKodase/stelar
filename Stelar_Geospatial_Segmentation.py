@@ -1,23 +1,24 @@
 import os
-import cv2
-from PIL import Image 
+#import cv2
+#from PIL import Image 
 import numpy as np 
-from patchify import patchify
+#from patchify import patchify
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 from matplotlib import pyplot as plt
 import random
 import torch
+import tensorflow as tf
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = tf.device("/GPU:0" if tf.test.is_gpu_available() else "/CPU:0")
 
 
 from tensorflow.keras.utils import to_categorical 
 
 
-dataset_size = 8000
+dataset_size = 600
 
-print("data loading started")
 
 #image_dataset = np.load('./dataset/saved_images_masks_npy/images/imagesChunk3.npy')
 image_dataset = np.load('./dataset/saved_images_masks_npy/images/testImgs.npy')
@@ -29,24 +30,21 @@ image_dataset[image_dataset<0] = 0
 #labels = np.load('./dataset/saved_images_masks_npy/masks/masksChunk3.npy')
 labels = np.load('./dataset/saved_images_masks_npy/masks/testlables.npy')
 
-
 #np.save('./dataset/saved_images_masks_npy/masks/testlables.npy', test_lables)
 
-print("image_dataset.max()", image_dataset.max())
-print("image_dataset.min()", image_dataset.min())
-
-
-labels = labels.astype(np.int8) 
-image_dataset = image_dataset.astype(np.int8) 
+#labels = labels.astype(np.int8) 
+#image_dataset = image_dataset.astype(np.int8) 
 
 torch.cuda.empty_cache()
 
-image_dataset = torch.tensor(image_dataset).to(device)
-labels = torch.tensor(labels).to(device)
+#image_dataset = torch.tensor(image_dataset).to(device)
+#labels = torch.tensor(labels).to(device)
+
+#image_dataset = torch.tensor(image_dataset)
+#labels = torch.tensor(labels)
 
 print("device", device)
 
-print("data loading ended")
 
 image_dataset = image_dataset[:10]
 labels = labels[:10]
@@ -66,72 +64,31 @@ for record in range(image_dataset.shape[0]):
             image_splits.append(selected_patch)
             label_splits.append(selected_mask)
 
-'''image_splits = np.concatenate(image_splits, axis=0)
-label_splits = np.concatenate(label_splits, axis=0)'''
 
-image_splits = torch.cat(image_splits, axis=0).to(device)
-label_splits = torch.cat(label_splits, axis=0).to(device)
+image_splits = torch.tensor(image_splits)
+label_splits = torch.tensor(label_splits)
 
-print("record end", record)
+#image_splits = torch.cat(image_splits, axis=0)
+#label_splits = torch.cat(label_splits, axis=0)
 
 
 image_splits = image_splits.reshape(-1, patch_len_x, patch_len_y)
 label_splits = label_splits.reshape(-1, patch_len_x, patch_len_y)
 
-print("image_splits.shape", image_splits.shape)
-print("label_splits.shape", label_splits.shape)
-
 
 print("categorical started")
 
 total_classes = 10
-#labels_categorical_dataset = to_categorical(label_splits.cpu(), num_classes=total_classes)
-
-'''labels_categorical_dataset = []
-for i in range(0, 1000, 200):
-  labels_categ = to_categorical(label_splits[i:i+200].cpu(), num_classes=total_classes)
-  print("labels_categ.shape", labels_categ.shape)
-  labels_categorical_dataset.append(labels_categ) 
-  print("i", i)
-labels_categorical_dataset = torch.tensor(labels_categorical_dataset)
-labels_categorical_dataset = torch.cat((labels_categorical_dataset,), axis=0).to(device)
-labels_categorical_dataset = labels_categorical_dataset.reshape(-1, patch_len_x, patch_len_y, total_classes)
-print("labels_categorical_dataset.shape", labels_categorical_dataset.shape)'''
-
 
 import torch.nn.functional as F
 
-# Assuming labels is a tensor of integer labels
-#label_splits = label_splits.to(torch.int8)
-
-labels_categorical_dataset = torch.tensor([]).to(device)
+labels_categorical_dataset = torch.tensor([])
 for i in range(dataset_size//200):
-  print("i*200", i*200)
-  #label_splits = label_splits.to(torch.int8)
   labels_cat = F.one_hot(label_splits[(i*200):(i*200)+200].long(), num_classes=total_classes)
-  labels_categorical_dataset = torch.cat((labels_categorical_dataset, labels_cat), axis=0).to(device)  
+  labels_categorical_dataset = torch.cat((labels_categorical_dataset, labels_cat), axis=0)
 
 image_splits = image_splits[:dataset_size]
-print("labels_categorical_dataset.shape merged", labels_categorical_dataset.shape)
 
-'''catg_labels = torch.zeros([label_splits.shape[0], label_splits.shape[1], label_splits.shape[2], 10]).to(device)
-catg_labels[:,:,:, label_splits[:,:,:]] = 1'''
-
-
-#print("catg_labels.shape", catg_labels.shape)
-
-#print("catg_labels", catg_labels)
-
-#
-
-# Convert labels to lower-precision data type (e.g., torch.int8)
-#labels = labels.to(torch.int8)
-
-# Perform one-hot encoding on the labels
-#labels_categorical_dataset = torch.eye(total_classes, dtype=torch.int8)[labels.long()]
-
-
-print("labels_categorical_dataset.shape merged", labels_categorical_dataset.shape)
 
 from sklearn.model_selection import train_test_split
 master_trianing_dataset = image_splits
@@ -157,7 +114,6 @@ print(image_channels)
 print(total_classes)
 
 ##################################################
-import tensorflow as tf
 X_train = X_train.cpu().numpy()
 y_train = y_train.cpu().numpy()
 X_test = X_test.cpu().numpy()
@@ -170,7 +126,12 @@ y_test = tf.convert_to_tensor(y_test, dtype=tf.float32)
 X_test = tf.convert_to_tensor(X_test, dtype=tf.float32)
 y_test = tf.convert_to_tensor(y_test, dtype=tf.float32)
 ##################################################
+print(X_train.shape)
+print(X_test.shape)
+print(y_train.shape)
+print(y_test.shape)
 
+##################################################
 # Deep learning part
 
 from keras.models import Model
@@ -193,54 +154,36 @@ def multi_unet_model(n_classes=5, image_height=256, image_width=256, image_chann
   source_input = inputs
 
   c1 = Conv2D(16, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(source_input)
-  print("c1.shape", c1.shape)
   c1 = Dropout(0.2)(c1)
-  print("after drop out c1.shape", c1.shape)
   c1 = Conv2D(16, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(c1)
-  print("after another convol", c1.shape)
   p1 = MaxPooling2D((2,2))(c1)
-  print("after max pooling", p1.shape)
 
   c2 = Conv2D(32, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(p1)
   c2 = Dropout(0.2)(c2)
-  print("c2.shape", c2.shape)
   c2 = Conv2D(32, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(c2)
   p2 = MaxPooling2D((2,2))(c2)
-  print("p2.shape", p2.shape)
 
   c3 = Conv2D(64, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(p2)
   c3 = Dropout(0.2)(c3)
   c3 = Conv2D(64, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(c3)
-  print("c3.shape", c3.shape)
   p3 = MaxPooling2D((2,2))(c3)
-  print("p3.shape", p3.shape)
 
   c4 = Conv2D(128, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(p3)
   c4 = Dropout(0.2)(c4)
   c4 = Conv2D(128, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(c4)
-  print("c4.shape", c4.shape)
   p4 = MaxPooling2D((2,2))(c4)
-  print("p4.shape", p4.shape)
 
   c5 = Conv2D(256, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(p4)
   c5 = Dropout(0.2)(c5)
-  print("c5.shape", c5.shape)
   c5 = Conv2D(256, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(c5)
-  print("again c5.shape", c5.shape)
 
   u6 = Conv2DTranspose(128, (2,2), strides=(2,2), padding="same")(c5)
-  print("u6.shape", u6.shape)
   u6 = concatenate([u6, c4])
-  print("after concatenation u6.shape", u6.shape)
   c6 = Conv2D(128, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(u6)
   c6 = Dropout(0.2)(c6)
   c6 = Conv2D(128, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(c6)
-  print("c6.shape", c6.shape)
   
   u7 = Conv2DTranspose(64, (2,2), strides=(2,2), padding="same")(c6)
-  #u7 = Conv2DTranspose(64, (2, 2), strides=(1, 1), padding="valid")(c6)
-  print("u7.shape", u7.shape)
-  print("c3.shape", c3.shape)
   u7 = Conv2DTranspose(64, (2,2), strides=(1,1), padding="valid")(u7)
   u7 = concatenate([u7, c3])
   c7 = Conv2D(64, (3,3), activation="relu", kernel_initializer="he_normal", padding="same")(u7)
@@ -288,11 +231,8 @@ from tensorflow import keras
 import segmentation_models as sm
 
 dice_loss = sm.losses.DiceLoss(class_weights = weights)
-
 focal_loss = sm.losses.CategoricalFocalLoss()
-
-dice_loss = sm.losses.DiceLoss(class_weights = weights)
-
+#dice_loss = sm.losses.DiceLoss(class_weights = weights)
 total_loss = dice_loss + (1 * focal_loss)
 
 import tensorflow as tf
@@ -354,14 +294,42 @@ plot_loss = PlotLossEx()
 
 #Two graph
 model_history = model.fit(X_train, y_train,
-                          batch_size=16,
+                          batch_size=200,
                           verbose=1,
-                          epochs=10,
+                          epochs=1000,
                           validation_data=(X_test, y_test),
                           callbacks=[plot_loss],
                           shuffle=False)
 
 history_a = model_history
 
-history_a.history
+#history_a.history
 
+loss = history_a.history['loss']
+val_loss = history_a.history['val_loss']
+epochs = range(1, len(loss) + 1)
+plt.plot(epochs, loss, 'y', label='Training loss')
+plt.plot(epochs, val_loss, 'r', label='Validation loss')
+plt.title('Training and validation loss')   
+plt.xlabel('Epochs')
+plt.ylabel('Loss Value')
+plt.legend()
+#plt.show()
+plt.savefig('./plots/loss.png')
+plt.close()
+
+jaccard_coef = history_a.history['jaccard_coef']
+val_jaccard_coef = history_a.history['val_jaccard_coef']
+epochs = range(1, len(jaccard_coef) + 1)
+
+plt.plot(epochs, jaccard_coef, 'y', label='Training IoU')
+plt.plot(epochs, val_jaccard_coef, 'r', label='Validation IoU')
+plt.title('Training and validation IoU')
+plt.xlabel('Epochs')
+plt.ylabel('IoU Value')
+plt.legend()
+plt.savefig('./plots/jaccard.png')
+plt.close()
+
+#saving the model
+model.save('./saved_model/stelar_lai_segmentation.h5')

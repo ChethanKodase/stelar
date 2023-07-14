@@ -23,9 +23,9 @@ datapath_filename = filepaths[0]
 filename = '32UQV_2002.RAS'
 
 # Run the below separately and not inside any loops
-chnl_0_range = 4
-chnl_1_range = 4
-chnl_2_range = 4
+chnl_0_range = 3
+chnl_1_range = 2
+chnl_2_range = 3
 ch_0_max = 255
 ch_1_max = 243
 ch_2_max = 140
@@ -73,7 +73,7 @@ for datapath_filename in filepaths:
         #print()
         print("day ", i_th_day, " done")
 
-        np.save('./dataset/arbitrary_masks/'+datapath_filename[-14:-4]+'_mask_mesr_'+str(i_th_day)+'.npy', test_ch)
+        np.save('./dataset/arbitrary_masks_s/'+datapath_filename[-14:-4]+'_mask_mesr_'+str(i_th_day)+'.npy', test_ch)
 
 
 
